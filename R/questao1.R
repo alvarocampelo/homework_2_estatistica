@@ -72,3 +72,75 @@ pc_N <- pnorm(31.5, mu, sigma) - pnorm(30.5, mu, sigma)
 
 tab_14 <- data.frame(Evento  = c("P(X >= 20)", "P(30 < X < 43)", "P(X = 31)"), Exato   = c(pa, pb, pc), Normal  = c(pa_N, pb_N, pc_N))
 print(tab_14, digits = 4)
+
+
+#q1. item 5
+#item 5 - c)
+
+set.seed(SEED) # semente unica, definida em parametros.R
+
+y <- rbinom(n, size = 1, prob = p) # 50 observacoes Bernoulli(p)
+k_obs <- sum(y) # numero de sucessos observados
+p_hat <- k_obs / n # MLE analitico: k/n
+
+# verificacao numerica: maximizando a logverossimilhanca
+loglik <- function(pp) dbinom(k_obs, n, pp, log = TRUE)
+p_hat_num <- optimize(loglik, interval = c(1e-6, 1 - 1e-6), maximum = TRUE)$maximum
+
+cat(sprintf("k = %d | p_hat = %.4f | p_hat (numerico) = %.6f | p teorico = %.3f\n", k_obs, p_hat, p_hat_num, p))
+cat(sprintf("Diferenca p_hat - p = %+.4f\n", p_hat - p))
+
+p_grid <- seq(0.15, 0.75, by = 0.001)
+
+plot_loglik <- function() {
+  plot(p_grid, loglik(p_grid), type = "l", lwd = 2, col = "steelblue", main = sprintf("Log-verossimilhanca para k = %d, n = %d", k_obs, n), xlab = "p", ylab = "Log-verossimilhanca  l(p | k)")
+  abline(v = p_hat, col = "firebrick", lwd = 2)
+  abline(v = p, col = "gray40", lty = 2, lwd = 2)
+  legend("bottomright",
+         legend = c("l(p | k)", sprintf("MLE p_hat = %.2f", p_hat), sprintf("p teorico = %.3f", p)),
+         col = c("steelblue", "firebrick", "gray40"),
+         lty = c(1, 1, 2), lwd = 2, bty = "n")
+}
+plot_loglik()
+png("figuras/q1_loglik.png", width = 1600, height = 1000, res = 200)
+plot_loglik()
+dev.off()
+
+#item 5 - c)
+# erro padrao teorico do MLE
+ep_teo <- function(nn) sqrt(p * (1 - p) / nn)
+cat(sprintf("EP teorico (n = 50): %.4f\n", ep_teo(n)))
+
+# faixa de 95% das estimativas com n = 50
+cat(sprintf("95%% das estimativas com n = 50 ficam entre %.2f e %.2f\n", qbinom(0.025, n, p) / n, qbinom(0.975, n, p) / n))
+
+# simulacao: 1000 amostras para cada tamanho amostral.
+# a soma de nn Bernoullis(p) e uma Binomial(nn, p), entao rbinom(R, nn, p) / nn
+# gera diretamente R estimativas p_hat, cada uma de uma amostra de tamanho nn.
+R_rep    <- 1000
+tamanhos <- c(50, 500, 5000)
+
+p_hat_sim <- lapply(tamanhos, function(nn) rbinom(R_rep, nn, p) / nn)
+names(p_hat_sim) <- paste0("n = ", tamanhos)
+
+tab_15d <- data.frame(
+  n = tamanhos,
+  EP_teorico = ep_teo(tamanhos),
+  DP_simulado = sapply(p_hat_sim, sd),
+  Media_p_hat = sapply(p_hat_sim, mean)
+)
+print(tab_15d, digits = 4)
+# histogramas comparados
+plot_sim <- function() {
+  par(mfrow = c(1, 3))
+  for (i in seq_along(tamanhos)) {
+    hist(p_hat_sim[[i]], breaks = 30, xlim = c(0.2, 0.6), col = "lightsteelblue", border = "white", main = names(p_hat_sim)[i], xlab = "Estimativa p_hat", ylab = "Frequencia")
+    abline(v = p, col = "firebrick", lty = 2, lwd = 2)
+  }
+  par(mfrow = c(1, 1))
+}
+
+plot_sim()
+png("figuras/q1_mle_tamanho_amostral.png", width = 2400, height = 900, res = 200)
+plot_sim()
+dev.off()
