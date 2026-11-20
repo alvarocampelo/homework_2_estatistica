@@ -1,16 +1,14 @@
 # Questão 3 - Simulação da temperatura da CPU (Box-Muller vs rnorm)
 
-# 1. Imports das demais questões e parâmetros globais
+# 1. Imports dos parâmetros globais e da Questão 1
 source("R/parametros.R") # carrega M, SEED, n, p
 
 q1 <- new.env()
 invisible(capture.output(source("R/questao1.R", local = q1)))
 
-# 2. Dados herdados da Questão 1 e de parametros.R
-n_q1 <- n
-p_q1 <- p
-m    <- q1$E_teo          # E[X] calculado na Q1 (item 3)
-n_T  <- round(100 * m)
+# 2. Dados herdados da Questão 1
+m   <- q1$E_teo          # E[X] calculado na Q1 (item 3)
+n_T <- round(100 * m)
 
 # Parâmetros da temperatura da CPU (próprios da Q3)
 mu    <- 62
@@ -30,8 +28,9 @@ set.seed(SEED)
 t_bm <- mu + sigma * box_muller(n_T)
 t_rn <- rnorm(n_T, mu, sigma)
 
-# Valores teóricos (usando a CDF F_x importada da Q1)
-r_teo  <- 1 - q1$F_x(floor(m))
+# Valores teóricos (usando pbinom com n e p de parametros.R)
+r_teo  <- 1 - pbinom(floor(m), n, p)
+z_crit <- qnorm(1 - r_teo)
 t_crit <- qnorm(1 - r_teo, mu, sigma)
 
 p68_teo    <- 1 - pnorm(68, mu, sigma)
@@ -62,18 +61,17 @@ tab <- data.frame(
   rnorm = round(resumo(t_rn), 4)
 )
 
-cat("n_T =", n_T, "| r =", round(r_teo, 6), "| T_crit =", round(t_crit, 4), "\n\n")
+cat("n_T =", n_T, "| r =", round(r_teo, 6),
+    "| z_crit =", round(z_crit, 4), "| T_crit =", round(t_crit, 4), "\n\n")
 print(tab)
 
-# Checagem dos extremos observados (z-score e probabilidade na amostra)
+# Checagem dos extremos observados (z-score)
 for (nm in c("Box-Muller", "rnorm")) {
   x <- if (nm == "Box-Muller") t_bm else t_rn
   z_min <- (min(x) - mu) / sigma
   z_max <- (max(x) - mu) / sigma
-  p_min <- 1 - (1 - pnorm(z_min))^n_T
-  p_max <- 1 - (1 - pnorm(-z_max))^n_T
-  cat(sprintf("\n%s -> min: %.2f (z=%.2f, P=%.3f) | max: %.2f (z=%.2f, P=%.3f)",
-              nm, min(x), z_min, p_min, max(x), z_max, p_max))
+  cat(sprintf("\n%s -> min: %.2f (z=%.2f) | max: %.2f (z=%.2f)",
+              nm, min(x), z_min, max(x), z_max))
 }
 cat("\n")
 
@@ -111,12 +109,7 @@ legend("bottom",
 par(mfrow = c(1, 1), oma = c(0, 0, 0, 0), mar = c(5.1, 4.1, 4.1, 2.1))
 
 # Verificações citadas no relatório
-z_crit <- qnorm(1 - r_teo)
-cat("\nz_crit =", round(z_crit, 4), "| T_crit =", round(mu + sigma * z_crit, 4), "\n")
-cat("P(T>68) =", round(1 - pnorm(68, mu, sigma), 4),
-    "| P(60<T<65) =", round(pnorm(65, mu, sigma) - pnorm(60, mu, sigma), 4), "\n")
-
-cat("P(55<T<69): BM =", round(mean(t_bm > 55 & t_bm < 69), 4),
+cat("\nP(55<T<69): BM =", round(mean(t_bm > 55 & t_bm < 69), 4),
     "| rnorm =", round(mean(t_rn > 55 & t_rn < 69), 4),
     "| teórico =", round(pnorm(2) - pnorm(-2), 4), "\n")
 
