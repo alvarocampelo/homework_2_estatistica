@@ -1,12 +1,19 @@
 # Questão 3 - Simulação da temperatura da CPU (Box-Muller vs rnorm)
 
-SEED <- 2
-n_q1 <- 50
-p_q1 <- 0.405
-m <- n_q1 * p_q1
-n_T <- round(100 * m)
+# 1. Imports das demais questões e parâmetros globais
+source("R/parametros.R") # carrega M, SEED, n, p
 
-mu <- 62
+q1 <- new.env()
+invisible(capture.output(source("R/questao1.R", local = q1)))
+
+# 2. Dados herdados da Questão 1 e de parametros.R
+n_q1 <- n
+p_q1 <- p
+m    <- q1$E_teo          # E[X] calculado na Q1 (item 3)
+n_T  <- round(100 * m)
+
+# Parâmetros da temperatura da CPU (próprios da Q3)
+mu    <- 62
 sigma <- 3.5
 
 # Gerador Normal(0, 1) por Box-Muller
@@ -23,15 +30,15 @@ set.seed(SEED)
 t_bm <- mu + sigma * box_muller(n_T)
 t_rn <- rnorm(n_T, mu, sigma)
 
-# Valores teóricos
-r_teo <- 1 - pbinom(floor(m), n_q1, p_q1)
+# Valores teóricos (usando a CDF F_x importada da Q1)
+r_teo  <- 1 - q1$F_x(floor(m))
 t_crit <- qnorm(1 - r_teo, mu, sigma)
 
-p68_teo <- 1 - pnorm(68, mu, sigma)
+p68_teo    <- 1 - pnorm(68, mu, sigma)
 p60_65_teo <- pnorm(65, mu, sigma) - pnorm(60, mu, sigma)
 
 # Extremos típicos para n_T observações (P(Z > z) = ln(2)/n_T)
-z_tip <- qnorm(1 - log(2) / n_T)
+z_tip   <- qnorm(1 - log(2) / n_T)
 min_tip <- mu - sigma * z_tip
 max_tip <- mu + sigma * z_tip
 
@@ -91,7 +98,8 @@ lines(x_seq, y_pdf, col = "#8B0000", lwd = 2)
 abline(v = t_crit, col = "#2F4F4F", lty = 2, lwd = 1.5)
 box()
 
-mtext("Temperaturas Simuladas da CPU (n = 2025)", outer = TRUE, cex = 1.1, font = 2, line = 0.5)
+mtext(sprintf("Temperaturas Simuladas da CPU (n = %d)", n_T),
+      outer = TRUE, cex = 1.1, font = 2, line = 0.5)
 
 par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
 plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n", xlab = "", ylab = "")
